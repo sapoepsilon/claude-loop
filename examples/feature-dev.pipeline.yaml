@@ -1,0 +1,62 @@
+name: feature-dev
+
+# Defaults applied to every agent/skill stage unless overridden.
+defaults:
+  permission_mode: bypassPermissions
+  idle_quiet_ms: 4000
+  wait_timeout_ms: 1800000
+
+stages:
+  # 3. implement the actionable item
+  - id: implement
+    type: agent
+    prompt: prompts/implement.md
+
+  # 3 (cont). agent-driven QA: drive the product, loop back to implement on failure
+  - id: qa
+    type: agent
+    prompt: prompts/qa.md
+    until:
+      type: command
+      run: "npm test"
+    on_fail:
+      goto: implement
+      max_attempts: 5
+
+  # 4. open a draft PR
+  - id: draft-pr
+    type: command
+    run: "gh pr create --draft --fill || gh pr edit --add-label loop"
+
+  # 5. review with your plugin, loop until clean
+  - id: review
+    type: skill
+    skill: comprehensive-review:full-review
+    until:
+      type: pattern
+      success: "no (critical|high)"
+    on_fail:
+      fix: true
+      max_attempts: 10
+
+  # 6. simplify — surface reusable code
+  - id: simplify
+    type: skill
+    skill: simplify
+
+  # 7. e2e tests must pass
+  - id: e2e
+    type: agent
+    prompt: prompts/e2e.md
+    until:
+      type: command
+      run: "npm run test:e2e"
+    on_fail:
+      fix: true
+      max_attempts: 3
+
+  # merge — the one human checkpoint you keep
+  - id: merge
+    type: command
+    run: "gh pr merge --squash"
+    gate: human

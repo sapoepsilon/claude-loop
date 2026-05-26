@@ -1,0 +1,25 @@
+{
+  "name": "claude-loop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Config-driven, multi-stage Claude Code pipelines for any codebase. Run a loop of agents, checks, skills and human gates from a single pipeline.yaml.",
+  "type": "module",
+  "bin": {
+    "claudeloop": "./bin/claudeloop"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "claudeloop": "tsx bin/claudeloop.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

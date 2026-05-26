@@ -1,0 +1,16 @@
+name: smoke
+
+defaults:
+  permission_mode: bypassPermissions
+  idle_quiet_ms: 5000
+  wait_timeout_ms: 180000
+
+stages:
+  - id: probe
+    type: agent
+    prompt_text: "Read package.json in the current directory and output ONLY the exact value of the \"test\" script field, nothing else. Do not modify any files."
+    until:
+      type: pattern
+      success: "vitest"
+    on_fail:
+      max_attempts: 2
