@@ -25,11 +25,19 @@ export function sessionExists(session: string): boolean {
   return result.status === 0;
 }
 
-export function newSession(args: { session: string; cwd?: string; command?: string }): void {
+export function newSession(args: { session: string; cwd?: string; command?: string; env?: Record<string, string>; width?: number; height?: number }): void {
   const cmd = ["new-session", "-d", "-s", args.session];
+  cmd.push("-x", String(args.width ?? 220), "-y", String(args.height ?? 50));
   if (args.cwd) cmd.push("-c", args.cwd);
+  for (const [key, value] of Object.entries(args.env ?? {})) {
+    cmd.push("-e", `${key}=${value}`);
+  }
   if (args.command) cmd.push(args.command);
   tmux(cmd);
+}
+
+export function sendKeysLiteral(session: string, text: string): void {
+  tmux(["send-keys", "-t", session, "-l", text]);
 }
 
 export function killSession(session: string): void {

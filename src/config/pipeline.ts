@@ -65,11 +65,21 @@ export interface PipelineDefaults {
   waitTimeoutMs: number;
 }
 
+export type NotifyEvent = "done" | "failed";
+
+export interface Notify {
+  // Which terminal states trigger the command. Defaults to both.
+  on: NotifyEvent[];
+  // Shell command run on a terminal state, with CLAUDELOOP_* env vars set.
+  run: string;
+}
+
 export interface Pipeline {
   name: string;
   defaults: PipelineDefaults;
   stages: Stage[];
   projectDir: string;
+  notify?: Notify;
 }
 
 export class PipelineError extends Error {}
@@ -162,6 +172,18 @@ function parseDefaults(raw: unknown): PipelineDefaults {
   return defaults;
 }
 
+function parseNotify(raw: unknown): Notify | undefined {
+  if (raw === undefined) return undefined;
+  const record = asRecord(raw, "notify");
+  if (typeof record.run !== "string") throw new PipelineError("notify needs a 'run' command");
+  let on: NotifyEvent[] = ["done", "failed"];
+  if (Array.isArray(record.on)) {
+    on = record.on.filter((event): event is NotifyEvent => event === "done" || event === "failed");
+    if (on.length === 0) throw new PipelineError("notify.on must include 'done' and/or 'failed'");
+  }
+  return { on, run: record.run };
+}
+
 export function loadPipeline(filePath: string, projectDir: string): Pipeline {
   const absolute = isAbsolute(filePath) ? filePath : resolve(projectDir, filePath);
   const parsed = parse(readFileSync(absolute, "utf8")) as unknown;
@@ -184,5 +206,8 @@ export function loadPipeline(filePath: string, projectDir: string): Pipeline {
     }
   }
 
-  return { name: root.name, defaults: parseDefaults(root.defaults), stages, projectDir };
+  const pipeline: Pipeline = { name: root.name, defaults: parseDefaults(root.defaults), stages, projectDir };
+  const notify = parseNotify(root.notify);
+  if (notify) pipeline.notify = notify;
+  return pipeline;
 }

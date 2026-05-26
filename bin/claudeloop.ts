@@ -3,7 +3,7 @@ import { argv, cwd, exit, stdout } from "node:process";
 import { resolveClaudeConfig } from "../src/config/claude-config.ts";
 import { loadPipeline } from "../src/config/pipeline.ts";
 import { detectProject, scaffold } from "../src/config/init.ts";
-import { Engine } from "../src/engine/engine.ts";
+import { Engine, type EngineOptions } from "../src/engine/engine.ts";
 import { tmuxInstalled } from "../src/runner/tmux.ts";
 
 function ulidish(): string {
@@ -66,6 +66,18 @@ function cmdDoctor(): void {
   }
 }
 
+function collectVars(args: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === "--var" && index + 1 < args.length) {
+      const pair = args[index + 1]!;
+      const eq = pair.indexOf("=");
+      if (eq > 0) out[pair.slice(0, eq)] = pair.slice(eq + 1);
+    }
+  }
+  return out;
+}
+
 async function cmdRun(args: string[]): Promise<void> {
   const pipelinePath = args[0];
   if (!pipelinePath || pipelinePath.startsWith("--")) throw new Error("run needs a pipeline file: claudeloop run <pipeline.yaml>");
@@ -74,7 +86,13 @@ async function cmdRun(args: string[]): Promise<void> {
 
   const config = resolveClaudeConfig(projectDir);
   const pipeline = loadPipeline(resolve(cwd(), pipelinePath), projectDir);
-  const engine = new Engine({ pipeline, config, runId: ulidish(), autoApprove });
+
+  const engineOptions: EngineOptions = { pipeline, config, runId: ulidish(), autoApprove };
+  const task = flagValue(args, "--task");
+  if (task) engineOptions.task = task;
+  const vars = collectVars(args);
+  if (Object.keys(vars).length > 0) engineOptions.vars = vars;
+  const engine = new Engine(engineOptions);
 
   const outcomes = await engine.run();
   const failed = outcomes.filter((outcome) => !outcome.passed);
