@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { parse } from "yaml";
 
 export type StageType = "agent" | "skill" | "command" | "human";
@@ -194,6 +194,15 @@ export function loadPipeline(filePath: string, projectDir: string): Pipeline {
   }
 
   const stages = root.stages.map((stage, index) => parseStage(stage, index));
+
+  // Prompt files are written relative to the pipeline file (e.g. .claudeloop/prompts/),
+  // not the project root. Resolve them against the pipeline's own directory now.
+  const baseDir = dirname(absolute);
+  for (const stage of stages) {
+    if (stage.type === "agent" && stage.prompt && !isAbsolute(stage.prompt)) {
+      stage.prompt = resolve(baseDir, stage.prompt);
+    }
+  }
 
   const ids = new Set<string>();
   for (const stage of stages) {
