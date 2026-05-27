@@ -4,6 +4,7 @@ import { resolveClaudeConfig } from "../src/config/claude-config.ts";
 import { loadPipeline } from "../src/config/pipeline.ts";
 import { detectProject, scaffold } from "../src/config/init.ts";
 import { Engine, type EngineOptions } from "../src/engine/engine.ts";
+import { serve, type ServeOptions } from "../src/server/serve.ts";
 import { tmuxInstalled } from "../src/runner/tmux.ts";
 
 function ulidish(): string {
@@ -78,6 +79,18 @@ function collectVars(args: string[]): Record<string, string> {
   return out;
 }
 
+function cmdServe(args: string[]): void {
+  const projectDir = resolve(flagValue(args, "--project") ?? cwd());
+  const options: ServeOptions = {
+    projectDir,
+    port: Number(flagValue(args, "--port") ?? process.env.LOOP_PORT ?? 5577),
+    pipelineFile: flagValue(args, "--pipeline") ?? ".claudeloop/pipeline.yaml",
+    triggerState: flagValue(args, "--trigger-state") ?? "Agent",
+  };
+  if (process.env.LINEAR_WEBHOOK_SECRET) options.webhookSecret = process.env.LINEAR_WEBHOOK_SECRET;
+  serve(options);
+}
+
 async function cmdRun(args: string[]): Promise<void> {
   const pipelinePath = args[0];
   if (!pipelinePath || pipelinePath.startsWith("--")) throw new Error("run needs a pipeline file: claudeloop run <pipeline.yaml>");
@@ -103,6 +116,7 @@ async function cmdRun(args: string[]): Promise<void> {
 async function main(): Promise<void> {
   const [command, ...args] = argv.slice(2);
   if (command === "init") return cmdInit(args);
+  if (command === "serve") return cmdServe(args);
   if (command === "run") return cmdRun(args);
   if (command === "config") return cmdConfig(args);
   if (command === "doctor") return cmdDoctor();

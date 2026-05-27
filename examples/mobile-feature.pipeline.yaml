@@ -1,0 +1,35 @@
+name: mobile-feature
+# Mobile loop: implement → build APK → QA on a real Android emulator → loop back on failure.
+# Requires on the box that runs this: Flutter SDK (analyze + build), and SSH reachability to the
+# kentra-mobile MCP host (the emulator VM) as declared in the repo's .mcp.json.
+
+defaults:
+  permission_mode: bypassPermissions
+  idle_quiet_ms: 8000
+  wait_timeout_ms: 2700000
+
+stages:
+  - id: implement
+    type: agent
+    prompt: prompts/implement.md
+    until:
+      type: command
+      run: "! flutter analyze 2>&1 | grep -q 'error •'"
+    on_fail:
+      fix: true
+      max_attempts: 3
+
+  - id: build-apk
+    type: command
+    run: "flutter build apk --debug"
+
+  # QA drives the real emulator via mcp__kentra-mobile__* and writes .claudeloop/qa-result.json.
+  - id: qa
+    type: agent
+    prompt: prompts/qa-mobile.md
+    until:
+      type: command
+      run: "python3 -c 'import json,sys; sys.exit(0 if json.load(open(\".claudeloop/qa-result.json\")).get(\"pass\") else 1)'"
+    on_fail:
+      goto: implement
+      max_attempts: 5
