@@ -76,6 +76,13 @@ export class ClaudeRunner {
       if (/Select login method/i.test(pane)) {
         return { ready: false, reason: "login gate appeared — onboarding not seeded; the credential won't be used" };
       }
+      if (/New MCP server found|Use this and all future MCP servers/i.test(pane)) {
+        // Option 2: "Use this and all future MCP servers in this project" (remembered).
+        sendKeys(this.opts.session, "Down", false);
+        await sleep(400);
+        sendEnter(this.opts.session);
+        continue;
+      }
       if (/I trust this folder/i.test(pane)) {
         sendEnter(this.opts.session);
         continue;
